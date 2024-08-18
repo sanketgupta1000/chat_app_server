@@ -7,6 +7,8 @@ require('dotenv').config()
 
 const interestRoutes = require("./src/routes/interest-routes");
 
+const userRoutes = require("./src/routes/user-routes");
+
 // // just for testing
 // const {fileURLToPath} = require("url");
 // const {dirname, join} = require("path");
@@ -45,8 +47,14 @@ const io = ws(httpServer)
 //     console.log("user connected");
 // })
 
+// middleware to convert body of all requests to json if exist
+app.use(express.json());
 
+// routes for interests
 app.use("/api/interests", interestRoutes);
+
+// routes for users
+app.use("/api/users", userRoutes);
 
 // route not matching
 app.use((req, res, next) => {
