@@ -9,6 +9,8 @@ const interestRoutes = require("./src/routes/interest-routes");
 
 const userRoutes = require("./src/routes/user-routes");
 
+const friendshipRoutes = require("./src/routes/friendship-routes");
+
 // // just for testing
 // const {fileURLToPath} = require("url");
 // const {dirname, join} = require("path");
@@ -56,6 +58,9 @@ app.use("/api/interests", interestRoutes);
 // routes for users
 app.use("/api/users", userRoutes);
 
+// routes for friendship requests
+app.use("/api/friendship-requests", friendshipRoutes);
+
 // route not matching
 app.use((req, res, next) => {
     const error = new HttpError("Could not find this route.", 404);
@@ -87,3 +92,8 @@ mongoose
 {
     console.log(err);
 })
+
+// export io
+module.exports = {
+    io
+}
