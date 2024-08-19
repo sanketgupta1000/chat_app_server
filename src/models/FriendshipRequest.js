@@ -17,6 +17,10 @@ const friendshipRequestSchema = new Schema(
             ref: 'User'
         },
 
+        receiver_name: String,
+
+        receiver_email: String,
+
         // "accepted", "rejected", or "unresponded"
         status: String,
 
@@ -29,7 +33,7 @@ const friendshipRequestSchema = new Schema(
 
 const FriendshipRequest = mongoose.model('FriendshipRequest', friendshipRequestSchema);
 
-model.exports = {
+module.exports = {
     FriendshipRequest,
     friendshipRequestSchema
 };
