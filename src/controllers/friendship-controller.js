@@ -275,6 +275,20 @@ const respondToFriendshipRequest = async(req, res, next)=>
         if(response==true)
         {
             // TODO: need to put the two in a room, and emit the private chat details
+            
+            // private chat room name
+            const privateChatRoomName = `private:${chat._id}`;
+            // get all sockets of user 1
+            const user1Sockets = await io.in(`user:${chat.user1_id}`).allSockets();
+            // put them in a room
+            user1Sockets.forEach((s)=>s.join(privateChatRoomName));
+            // get all sockets of user 2
+            const user2Sockets = await io.in(`user:${chat.user2_id}`).allSockets();
+            // put them in a room
+            user2Sockets.forEach((s)=>s.join(privateChatRoomName));
+
+            // emit private chat details to the room
+            io.to(privateChatRoomName).emit('new private chat', chat);
 
         }
 
