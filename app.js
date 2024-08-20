@@ -5,16 +5,6 @@ const http = require("http");
 // env vars
 require('dotenv').config()
 
-const interestRoutes = require("./src/routes/interest-routes");
-
-const userRoutes = require("./src/routes/user-routes");
-
-const friendshipRoutes = require("./src/routes/friendship-routes");
-
-// // just for testing
-// const {fileURLToPath} = require("url");
-// const {dirname, join} = require("path");
-
 // web socket
 const ws = require("socket.io");
 const HttpError = require("./src/models/HttpError");
@@ -27,6 +17,18 @@ const httpServer = http.createServer(app);
 
 // socket io object
 const io = ws(httpServer)
+
+module.exports.io = io;
+
+const interestRoutes = require("./src/routes/interest-routes");
+
+const userRoutes = require("./src/routes/user-routes");
+
+const friendshipRoutes = require("./src/routes/friendship-routes");
+
+// // just for testing
+// const {fileURLToPath} = require("url");
+// const {dirname, join} = require("path");
 
 // // let's test rest and socket both
 
@@ -92,8 +94,3 @@ mongoose
 {
     console.log(err);
 })
-
-// export io
-module.exports = {
-    io
-}
