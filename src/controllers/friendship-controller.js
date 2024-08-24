@@ -116,9 +116,9 @@ const sendFriendshipRequest = async(req, res, next)=>
 
         // emitting socket event on receiver
         // TODO: check this
-        // io.to(`user:${receiver_id}`).emit("new friendship request", {
-        //     request: newRequest.toObject({getters: true})
-        // });
+        io.to(`user:${receiver_id}`).emit("new friendship request", {
+            request: newRequest.toObject({getters: true})
+        });
 
         // send response
         res.status(201).json({request: newRequest.toObject({getters: true})});
