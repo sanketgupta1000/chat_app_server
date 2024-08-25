@@ -73,6 +73,12 @@ const sendMessage = async(req,res,next) =>
         {
             throw new HttpError("Unable to send message", 500);
         }
+    }
+    catch(e)
+    {
+        console.log(e);
+        return next(e);
+    }
 }
 
 
