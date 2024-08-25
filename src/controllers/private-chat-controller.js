@@ -5,18 +5,21 @@ const { User } = require("../models/User");
 const {PrivateChat} = require("../models/PrivateChat");
 const {PrivateChatMsg} = require("../models/PrivateChatMsg");
 const { io } = require("../../app");
-const { PrivateChat } = require("../models/PrivateChat");
-const { io } = require("../../app");
+
+
+
 const sendMessage = async(req,res,next) =>
 {
     try
     {
+
         const errors = validationResult(req);
         if(!errors.isEmpty)
         {
             // invalid inputs
             throw new HttpError("Invalid inputs. Please try again.", 422);
         }
+
         const {sender_id, message, private_chat_id} = req.body;
         let private_chat;
         try
@@ -53,7 +56,7 @@ const sendMessage = async(req,res,next) =>
                 sender_id,
                 sent_date_time: new Date(),
                 receiver_id: receiver_id,
-                status: "delieverd",
+                status: "delivered",
                 status_time: new Date(),
                 message
             });
@@ -70,7 +73,67 @@ const sendMessage = async(req,res,next) =>
         {
             throw new HttpError("Unable to send message", 500);
         }
+}
 
+
+// method to get private chat messages
+const getMessages = async(req, res, next)=>
+{
+    try
+    {
+
+        // fetch data
+        const {user_id, private_chat_id, limit, offset} = req.body;
+
+        // fetch messages
+        let messages = [];
+
+        try
+        {
+            messages = await PrivateChatMsg.aggregate(
+                [
+                    {
+                        // getting messages
+                        $match: {
+                            private_chat_id: private_chat_id,
+                            $or: [{sender_id: user_id}, {receiver_id: user_id}]
+                        }
+                    },
+                    {
+                        // sorting in descending order
+                        $sort: {
+                            sent_date_time: -1
+                        }
+                    },
+                    // offsetting and limiting
+                    {
+                        $skip: offset
+                    },
+                    {
+                        $limit: limit
+                    },
+                    {
+                        $project: {
+                            _id: false,
+                            id: "$_id"
+                        }
+                    }
+                ]
+            );
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw new HttpError("Failed to fetch messages. Please try again later.", 500);
+        }
+
+        // send response;
+        return res.status(200)
+        .json(
+            {
+                messages
+            }
+        );
 
     }
     catch(e)
@@ -79,6 +142,8 @@ const sendMessage = async(req,res,next) =>
         return next(e);
     }
 }
+
 module.exports = {
-    sendMessage
+    sendMessage,
+    getMessages
 }

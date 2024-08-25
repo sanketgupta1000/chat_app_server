@@ -1,7 +1,13 @@
-import mongoose  from "mongoose";
+const mongoose = require("mongoose");
 const {Schema} = mongoose;
 
 const PrivateChatMsgSchema = new Schema({
+
+    private_chat_id: {
+        type: mongoose.ObjectId,
+        ref: 'PrivateChat'
+    },
+
     sender_id: {
         type: mongoose.ObjectId,
         ref: 'User'
@@ -21,4 +27,4 @@ const PrivateChatMsg = mongoose.model('PrivateChatMsg', PrivateChatMsgSchema);
 
 module.exports = {
     PrivateChatMsg
-}
+};
