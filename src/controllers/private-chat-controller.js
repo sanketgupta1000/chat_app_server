@@ -129,7 +129,14 @@ const getMessages = async(req, res, next)=>
                     {
                         $project: {
                             _id: false,
-                            id: "$_id"
+                            id: "$_id",
+                            private_chat_id: "$private_chat_id",
+                            sender_id: "$sender_id",
+                            sent_date_time: "$sent_date_time",
+                            receiver_id: "$receiver_id",
+                            status: "$status",
+                            status_time: "$status_time",
+                            message: "$message"
                         }
                     }
                 ]
