@@ -28,6 +28,8 @@ const friendshipRoutes = require("./src/routes/friendship-routes");
 
 const privateChatRoutes = require("./src/routes/private-chat-routes");
 
+const groupRoutes = require("./src/routes/group-routes");
+
 // // just for testing
 // const {fileURLToPath} = require("url");
 // const {dirname, join} = require("path");
@@ -67,6 +69,9 @@ app.use("/api/friendship-requests", friendshipRoutes);
 
 // routes for private chat
 app.use("/api/private-chats", privateChatRoutes);
+
+// routes for groups
+app.use("/api/groups", groupRoutes);
 
 // route not matching
 app.use((req, res, next) => {
