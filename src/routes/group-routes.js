@@ -30,4 +30,22 @@ router.post(
     groupController.createGroup
 );
 
+// endpoint to send message in group
+router.post(
+    "/send-message",
+    [
+        // groupid, senderid, and message for now
+        check("sender_id")
+            .not()
+            .isEmpty(),
+        check("group_id")
+            .not()
+            .isEmpty(),
+        check("message")
+            .not()
+            .isEmpty()
+    ],
+    groupController.sendMessage
+);
+
 module.exports = router;

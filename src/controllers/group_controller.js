@@ -5,6 +5,7 @@ const { default: mongoose } = require("mongoose");
 const { User } = require("../models/User");
 const { io } = require("../../app");
 const { PrivateChat } = require("../models/PrivateChat");
+const {Group_Chat} = require("../models/GroupChat");
 
 // method to create a group
 const createGroup = async(req, res, next)=>
@@ -64,9 +65,19 @@ const createGroup = async(req, res, next)=>
             throw new HttpError("Some users are not your friends, cannot proceed to create group.", 422);
         }
 
-        // get the admin name
-        const adminName = friendsOfAdmin[0].user1_id==admin_id ? friendsOfAdmin[0].user1_name : friendsOfAdmin[0].user2_name;
-        
+        // get the admin
+        let admin;
+
+        try
+        {
+            admin = await User.findById(admin_id);
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw new HttpError("Failed to fetch necessary data. Please try again later.", 500);
+        }
+
         // get all the members
         let groupMembers = [];
         try
@@ -83,6 +94,8 @@ const createGroup = async(req, res, next)=>
             throw new HttpError("Failed to fetch necessary data. please try again later.", 500);
         }
 
+        groupMembers.unshift(admin);
+
         // create group now
         let newGroup;
         try
@@ -92,12 +105,14 @@ const createGroup = async(req, res, next)=>
                     group_name: group_name,
                     group_description: group_description,
                     admin_id: admin_id,
-                    admin_name: adminName,
+                    admin_name: admin.name,
                     members: groupMembers,
                     last_msg_sender_id: null,
                     last_msg: null
                 }
             );
+
+            await newGroup.save();
         }
         catch(err)
         {
@@ -134,6 +149,93 @@ const createGroup = async(req, res, next)=>
     }
 }
 
+// method to send message in a group
+const sendMessage = async(req, res, next)=>
+{
+    try
+    {
+        const errors = validationResult(req);
+        if(!errors.isEmpty)
+        {
+            // invalid inputs
+            throw new HttpError("Invalid inputs. Please try again.", 422);
+        }
+
+        // get the data
+        const {sender_id, group_id, message} = req.body;
+
+        const validSenderId = new mongoose.Types.ObjectId(String(sender_id));
+        const validGroupId = new mongoose.Types.ObjectId(String(group_id));
+
+        // check if sender is in group or not
+        let group;
+        try
+        {
+            group = await Group.findOne({
+                _id: validGroupId,
+                'members._id': validSenderId
+            });
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw new HttpError("Failed to fetch necessary data. please try again later.", 500);
+        }
+
+        if(!group)
+        {
+            // group not found
+            throw new HttpError("Group not found", 404);
+        }
+
+        // let's find the sender's name
+        let senderName;
+        for(member of group.members)
+        {
+            if(member._id==sender_id)
+            {
+                senderName = member.name;
+                break;
+            }
+        }
+
+        // let's create group chat object
+        let newGroupChat;
+        try
+        {
+            newGroupChat = new Group_Chat({
+                group_id: validGroupId,
+                sender_id: validSenderId,
+                sender_name: senderName,
+                sent_date_time: new Date(),
+                message: message
+            });
+
+            await newGroupChat.save();
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw new HttpError("Failed to send message. Please try again later", 500);
+        }
+
+        // emit the new group chat to the room of group
+        io.to(`group:${group_id}`).emit("new group chat", newGroupChat);
+
+        res.status(201)
+            .json({
+                group_chat: newGroupChat.toObject({getters: true})
+            });
+
+    }
+    catch(e)
+    {
+        console.log(e);
+        return next(e);
+    }
+}
+
 module.exports = {
-    createGroup
+    createGroup,
+    sendMessage
 };

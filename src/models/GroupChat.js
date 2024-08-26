@@ -1,4 +1,4 @@
-import mongoose  from "mongoose";
+const mongoose = require("mongoose");
 const {Schema} = mongoose;
 
 const Group_Chat_Schema = new Schema({
