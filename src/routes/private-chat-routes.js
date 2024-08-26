@@ -12,7 +12,7 @@ router.post(
             .not()
             .isEmpty(),
         
-        check("receiver_id")
+        check("private_chat_id")
             .not()
             .isEmpty(),
 
