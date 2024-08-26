@@ -27,7 +27,7 @@ const sendMessage = async(req,res,next) =>
             private_chat = await PrivateChat.findOne(
                 {
                     $or : [{user1_id: sender_id},{user2_id: sender_id}],
-                    private_chat_id: private_chat_id,
+                    _id: private_chat_id,
                 }
             );
         }
@@ -58,7 +58,8 @@ const sendMessage = async(req,res,next) =>
                 receiver_id: receiver_id,
                 status: "delivered",
                 status_time: new Date(),
-                message
+                message,
+                private_chat_id
             });
 
             await privateChatMsg.save();
@@ -88,6 +89,13 @@ const getMessages = async(req, res, next)=>
     try
     {
 
+        const errors = validationResult(req);
+        if(!errors.isEmpty)
+        {
+            // invalid inputs
+            throw new HttpError("Invalid inputs. Please try again.", 422);
+        }
+
         // fetch data
         const {user_id, private_chat_id, limit, offset} = req.body;
 
@@ -101,8 +109,8 @@ const getMessages = async(req, res, next)=>
                     {
                         // getting messages
                         $match: {
-                            private_chat_id: private_chat_id,
-                            $or: [{sender_id: user_id}, {receiver_id: user_id}]
+                            $or: [{receiver_id: new mongoose.Types.ObjectId(String(user_id))}, {sender_id: new mongoose.Types.ObjectId(String(user_id))}],
+                            private_chat_id: new mongoose.Types.ObjectId(String(private_chat_id))
                         }
                     },
                     {
