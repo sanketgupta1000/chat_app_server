@@ -27,7 +27,20 @@ router.post(
     userController.signup
 );
 
-// TODO: endpoint to generate and send jwt goes here
+// endpoint to generate and send jwt
+router.post(
+    "/login",
+    [
+        // email and password is must
+        check("email")
+            .normalizeEmail()
+            .isEmail(),
+        check("password")
+            .not()
+            .isEmpty()
+    ],
+    userController.login
+);
 
 // endpoint for retrieving suggested users for the current user
 // TODO: jwt integration 

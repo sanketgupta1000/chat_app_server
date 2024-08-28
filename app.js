@@ -2,6 +2,10 @@ const express = require("express");
 const mongoose = require("mongoose");
 const http = require("http");
 
+// jwt related things
+const {secureRoute, jwtDecodeOptions} = require("./src/config/jwt-config");
+const jwt = require("jsonwebtoken");
+
 // env vars
 require('dotenv').config()
 
@@ -57,6 +61,33 @@ const groupRoutes = require("./src/routes/group-routes");
 
 // middleware to convert body of all requests to json if exist
 app.use(express.json());
+
+// test endpoints to test jwt
+
+// to get secured data
+app.get(
+    "/self",
+    secureRoute,
+    (req, res)=>
+    {
+        
+        console.log("executing the controller method")
+
+        if(req.user)
+        {
+            // auth success
+            res.send(req.user);
+        }
+        else
+        {
+            // auth failed
+            res.status(401).end();
+        }
+    }
+);
+
+// to get jwt
+// is there in userRoutes
 
 // routes for interests
 app.use("/api/interests", interestRoutes);
