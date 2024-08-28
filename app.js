@@ -59,6 +59,32 @@ const groupRoutes = require("./src/routes/group-routes");
 //     console.log("user connected");
 // })
 
+// authentication for web socket connectionds
+io.engine.use((req, res, next) =>
+{
+    // is it a handshake request?
+    const isHandshake = req._query.sid === undefined;
+    if (isHandshake)
+    {
+        // yes, it is handshake request, authenticate it
+        secureRoute(req, res, next);
+    }
+    else
+    {
+        // not a handshake request, proceed
+        next();
+    }
+});
+
+io.on("connection", (socket)=>
+{
+    // a new connection
+    // get the user
+    const user = socket.request.user;
+    // put the user in his room
+    socket.join(`user:${user._id}`);
+});
+
 // middleware to convert body of all requests to json if exist
 app.use(express.json());
 
@@ -72,17 +98,10 @@ app.get(
     {
         
         console.log("executing the controller method")
-
-        if(req.user)
-        {
-            // auth success
-            res.send(req.user);
-        }
-        else
-        {
-            // auth failed
-            res.status(401).end();
-        }
+        
+        // auth success
+        res.send(req.user);
+        
     }
 );
 

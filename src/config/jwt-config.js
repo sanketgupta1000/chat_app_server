@@ -12,6 +12,7 @@ const jwt = require("jsonwebtoken");
 const jwtSecret = "Mys3cr3t";
 
 const {User} = require("../models/User");
+const HttpError = require("../models/HttpError");
 
 // decode options
 const jwtDecodeOptions = {
@@ -28,7 +29,7 @@ passport.use(
 
         console.log("jwt is decoded, trying to put payload in req.user");
 
-        // console.log(payload);
+        console.log(payload);
         // payload.data is the data we put when signing the jwt
         // we are fetching the user from the DB, and putting it in the req.user
         User.findById(payload.data.id)
@@ -45,12 +46,14 @@ passport.use(
             {
                 console.log("user not found");
                 // user not found
-                return done(null, false);
+                return done(new HttpError("Incorrect username or password", 401), false);
             }
         })
         .catch((err)=>
         {
-            return done(err, false);
+            // could not fetch
+            console.log(err);
+            return done(new HttpError("Could not fetch necessary data. Please try again later", 500), false);
         })
         
       })
