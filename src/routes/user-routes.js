@@ -3,6 +3,7 @@ const express = require("express");
 const {check} = require("express-validator");
 
 const userController = require("../controllers/user-controller");
+const { secureRoute } = require("../config/jwt-config");
 
 const router = express.Router();
 
@@ -27,18 +28,26 @@ router.post(
     userController.signup
 );
 
-// TODO: endpoint to generate and send jwt goes here
+// endpoint to generate and send jwt
+router.post(
+    "/login",
+    [
+        // email and password is must
+        check("email")
+            .normalizeEmail()
+            .isEmail(),
+        check("password")
+            .not()
+            .isEmpty()
+    ],
+    userController.login
+);
 
 // endpoint for retrieving suggested users for the current user
-// TODO: jwt integration 
 router.get(
     "/suggestions",
-    [
-        // for now, user's id must be present
-        check("id")
-        .not()
-        .isEmpty()
-    ],
+    // auth middleware
+    secureRoute,
     userController.getSuggestedUsers
 );
 

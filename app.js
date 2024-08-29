@@ -2,6 +2,10 @@ const express = require("express");
 const mongoose = require("mongoose");
 const http = require("http");
 
+// jwt related things
+const {secureRoute, jwtDecodeOptions} = require("./src/config/jwt-config");
+const jwt = require("jsonwebtoken");
+
 // env vars
 require('dotenv').config()
 
@@ -55,8 +59,54 @@ const groupRoutes = require("./src/routes/group-routes");
 //     console.log("user connected");
 // })
 
+// authentication for web socket connectionds
+io.engine.use((req, res, next) =>
+{
+    // is it a handshake request?
+    const isHandshake = req._query.sid === undefined;
+    if (isHandshake)
+    {
+        // yes, it is handshake request, authenticate it
+        secureRoute(req, res, next);
+    }
+    else
+    {
+        // not a handshake request, proceed
+        next();
+    }
+});
+
+io.on("connection", (socket)=>
+{
+    // a new connection
+    // get the user
+    const user = socket.request.user;
+    // put the user in his room
+    socket.join(`user:${user._id}`);
+});
+
 // middleware to convert body of all requests to json if exist
 app.use(express.json());
+
+// test endpoints to test jwt
+
+// to get secured data
+app.get(
+    "/self",
+    secureRoute,
+    (req, res)=>
+    {
+        
+        console.log("executing the controller method")
+        
+        // auth success
+        res.send(req.user);
+        
+    }
+);
+
+// to get jwt
+// is there in userRoutes
 
 // routes for interests
 app.use("/api/interests", interestRoutes);
