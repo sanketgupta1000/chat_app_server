@@ -7,7 +7,7 @@ const {PrivateChatMsg} = require("../models/PrivateChatMsg");
 const { io } = require("../../app");
 
 
-
+// method to send message
 const sendMessage = async(req,res,next) =>
 {
     try
@@ -20,13 +20,19 @@ const sendMessage = async(req,res,next) =>
             throw new HttpError("Invalid inputs. Please try again.", 422);
         }
 
-        const {sender_id, message, private_chat_id} = req.body;
+        const { message, private_chat_id} = req.body;
+
+        // get sender id
+        const sender_id = req.user._id
+
+        const validSenderId = new mongoose.Types.ObjectId(String(sender_id));
+
         let private_chat;
         try
         {
             private_chat = await PrivateChat.findOne(
                 {
-                    $or : [{user1_id: sender_id},{user2_id: sender_id}],
+                    $or : [{user1_id: validSenderId},{user2_id: validSenderId}],
                     _id: private_chat_id,
                 }
             );
@@ -40,40 +46,57 @@ const sendMessage = async(req,res,next) =>
             throw new HttpError("Private Chat not found", 404);
         }
 
+        // determining whether which user is receiver 
+        let receiver_id;
+        if(sender_id.toString() == private_chat.user1_id.toString())
+        {
+            receiver_id = private_chat.user2_id;
+        }
+        else
+        {
+            receiver_id = private_chat.user1_id;
+        }
+
+        // let's start a transaction
+        const session = await mongoose.startSession();
+        let privateChatMsg;
         try
         {
-            // determining whether which user is receiver 
-            let receiver_id;
-            if(sender_id == private_chat.user1_id)
+
+            await session.withTransaction(async()=>
             {
-                receiver_id = private_chat.user2_id;
-            }
-            else
-            {
-                receiver_id = private_chat.user1_id;
-            }
-            const privateChatMsg = new PrivateChatMsg({
-                sender_id,
-                sent_date_time: new Date(),
-                receiver_id: receiver_id,
-                status: "delivered",
-                status_time: new Date(),
-                message,
-                private_chat_id
+                // create chat message and save it
+                privateChatMsg = new PrivateChatMsg({
+                    sender_id,
+                    sent_date_time: new Date(),
+                    receiver_id: receiver_id,
+                    status: "delivered",
+                    status_time: new Date(),
+                    message,
+                    private_chat_id
+                });
+    
+                await privateChatMsg.save();
+
+                // update last message in privatge chat
+                private_chat.last_msg = message;
+                private_chat.last_msg_sender_id = sender_id
+
+                await private_chat.save();
+
             });
-
-            await privateChatMsg.save();
-
-            const privateChatRoomName = `private:${private_chat._id}`;
-            io.to(privateChatRoomName).emit('new private msg', privateChatMsg);
-
-            res.status(201).json({message: privateChatMsg.toObject({getters: true})});
-
+ 
         }
         catch(e)
         {
             throw new HttpError("Unable to send message", 500);
         }
+
+        // emit the new message to both of them
+        io.to(`user:${sender_id}`).emit("new private chat message", privateChatMsg);
+        io.to(`user:${receiver_id}`).emit("new private chat message", privateChatMsg);
+
+        res.status(201).json({message: privateChatMsg.toObject({getters: true})});
     }
     catch(e)
     {
@@ -97,11 +120,13 @@ const getMessages = async(req, res, next)=>
         }
 
         // fetch data
-        const {user_id, private_chat_id, limit, offset} = req.body;
+        const { private_chat_id, limit, offset} = req.body;
+
+        const user_id = req.user._id;
 
         // fetch messages
         let messages = [];
-
+console.log(user_id)
         try
         {
             messages = await PrivateChatMsg.aggregate(

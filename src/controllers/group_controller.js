@@ -220,7 +220,7 @@ const sendMessage = async(req, res, next)=>
         // emit the new group chat to all members of group
         for(let member in group.members)
         {
-            io.to(`user:${member._id}`).emit("new group chat", newGroupChat);
+            io.to(`user:${member._id}`).emit("new group message", newGroupChat);
         }
 
         res.status(201)

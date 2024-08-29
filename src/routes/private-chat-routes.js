@@ -2,16 +2,18 @@ const express = require('express')
 
 const privateChatController = require("../controllers/private-chat-controller");
 const {check} = require("express-validator");
+const { secureRoute } = require('../config/jwt-config');
 
 const router = express.Router();
 
+// auth middleware to all routes of this router
+router.use(secureRoute);
+
+// endpoint to send message
 router.post(
     "/send",
     [
-        check("sender_id")
-            .not()
-            .isEmpty(),
-        
+        // sender id can be taken from req.user
         check("private_chat_id")
             .not()
             .isEmpty(),
@@ -27,10 +29,7 @@ router.post(
 router.get(
     "/",
     [
-        // user id and private chat id must for now
-        check("user_id")
-            .not()
-            .isEmpty(),
+        // user id can be taken from req.user
         check("private_chat_id")
             .not()
             .isEmpty(),
