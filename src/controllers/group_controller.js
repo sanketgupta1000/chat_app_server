@@ -21,7 +21,10 @@ const createGroup = async(req, res, next)=>
         }
 
         // get the data from req body
-        const {group_name, group_description, admin_id, members} = req.body;
+        const {group_name, group_description, members} = req.body;
+
+        // admin id
+        const admin_id = req.user._id;
 
         // check if all the members are friends of admin or not
         
@@ -57,8 +60,8 @@ const createGroup = async(req, res, next)=>
             console.log(err);
             throw new HttpError("Failed to fetch necessary data. Please try again later.", 500);
         }
-        console.log("validMemberIds: "+validMemberIds);
-        console.log("friendsOfAdmin: "+friendsOfAdmin);
+        // console.log("validMemberIds: "+validMemberIds);
+        // console.log("friendsOfAdmin: "+friendsOfAdmin);
         if(friendsOfAdmin.length!=validMemberIds.length)
         {
             //invalid friends given
@@ -66,17 +69,7 @@ const createGroup = async(req, res, next)=>
         }
 
         // get the admin
-        let admin;
-
-        try
-        {
-            admin = await User.findById(admin_id);
-        }
-        catch(err)
-        {
-            console.log(err);
-            throw new HttpError("Failed to fetch necessary data. Please try again later.", 500);
-        }
+        let admin = req.user;
 
         // get all the members
         let groupMembers = [];
@@ -120,19 +113,12 @@ const createGroup = async(req, res, next)=>
             throw new HttpError("Failed to create group. Please try again later", 500);
         }
 
-        // now let's put all of them in one room and emit the details of group there
-        const groupRoomName = `group:${newGroup._id}`;
-        const admin_sockets = await io.in(`user:${admin_id}`).allSockets();
-        admin_sockets.forEach((s)=>s.join(groupRoomName));
-
-        for(let memberId of validMemberIds)
+        // need to emit group details to all of members
+        
+        for(let member of groupMembers)
         {
-            const memberSockets = await io.in(`user:${memberId}`).allSockets();
-            memberSockets.forEach((s)=>s.join(groupRoomName));
+            io.to(`user:${member._id}`).emit("new group", newGroup);
         }
-
-        // emit group details
-        io.to(groupRoomName).emit('new group', newGroup);
 
         // send response
         res.status(201).json(
@@ -162,7 +148,10 @@ const sendMessage = async(req, res, next)=>
         }
 
         // get the data
-        const {sender_id, group_id, message} = req.body;
+        const { group_id, message} = req.body;
+
+        // get sender id
+        const sender_id = req.user._id;
 
         const validSenderId = new mongoose.Types.ObjectId(String(sender_id));
         const validGroupId = new mongoose.Types.ObjectId(String(group_id));
@@ -188,30 +177,39 @@ const sendMessage = async(req, res, next)=>
             throw new HttpError("Group not found", 404);
         }
 
-        // let's find the sender's name
-        let senderName;
-        for(member of group.members)
-        {
-            if(member._id==sender_id)
-            {
-                senderName = member.name;
-                break;
-            }
-        }
+        // get the sender's name
+        let senderName = req.user.name
 
         // let's create group chat object
         let newGroupChat;
+
+        // let's start transaction
+        const session = await mongoose.startSession();
+
         try
         {
-            newGroupChat = new Group_Chat({
-                group_id: validGroupId,
-                sender_id: validSenderId,
-                sender_name: senderName,
-                sent_date_time: new Date(),
-                message: message
+
+            await session.withTransaction(async()=>
+            {
+                // first create group chat and save
+                newGroupChat = new Group_Chat({
+                    group_id: validGroupId,
+                    sender_id: validSenderId,
+                    sender_name: senderName,
+                    sent_date_time: new Date(),
+                    message: message
+                });
+    
+                await newGroupChat.save();
+
+                // now update last message in group
+                group.last_msg = message;
+                group.last_msg_sender_id = validSenderId;
+                // save it
+                await group.save();
+
             });
 
-            await newGroupChat.save();
         }
         catch(err)
         {
@@ -219,8 +217,11 @@ const sendMessage = async(req, res, next)=>
             throw new HttpError("Failed to send message. Please try again later", 500);
         }
 
-        // emit the new group chat to the room of group
-        io.to(`group:${group_id}`).emit("new group chat", newGroupChat);
+        // emit the new group chat to all members of group
+        for(let member in group.members)
+        {
+            io.to(`user:${member._id}`).emit("new group chat", newGroupChat);
+        }
 
         res.status(201)
             .json({
