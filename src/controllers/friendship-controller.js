@@ -19,26 +19,13 @@ const sendFriendshipRequest = async(req, res, next)=>
         }
 
         // get the data from request body
-        const {sender_id, receiver_id} = req.body;
+        const { receiver_id} = req.body;
 
-        // fetch sender
-        let sender;
-        try
-        {
-            sender = await User.findById(sender_id);
-        }
-        catch(err)
-        {
-            // couldn't fetch
-            console.log(err);
-            throw new HttpError("Could not fetch necessary data. Please try again later.", 500);
-        }
+        // get sender id from req.user
+        const sender_id = req.user._id;
 
-        if(!sender)
-        {
-            // sender not found
-            throw new HttpError("Sender not found.", 404);
-        }
+        // get the sender
+        const sender = req.user;
 
         // fetch the receiver
         let receiver;
@@ -115,7 +102,6 @@ const sendFriendshipRequest = async(req, res, next)=>
         }
 
         // emitting socket event on receiver
-        // TODO: check this
         io.to(`user:${receiver_id}`).emit("new friendship request", {
             request: newRequest.toObject({getters: true})
         });
@@ -137,16 +123,8 @@ const getReceivedFriendshipRequests = async(req, res, next)=>
     try
     {
 
-        const errors = validationResult(req);
-        if(!errors.isEmpty)
-        {
-            // not valid
-            // invalid inputs
-            throw new HttpError("User id not found in request. Please try again.", 422);
-        }
-
-        // get the data
-        const {id} = req.body;
+        // get the user id
+        const id = req.user._id;
 
         // get the received and unresponded friendship requests
         let receivedFriendshipRequests;
@@ -199,7 +177,10 @@ const respondToFriendshipRequest = async(req, res, next)=>
         }
 
         // get the data
-        const {user_id, friendship_request_id, response} = req.body;
+        const { friendship_request_id, response} = req.body;
+
+        // get user id
+        const user_id = req.user._id;
 
         // find the corresponding request
         let request;
@@ -274,21 +255,9 @@ const respondToFriendshipRequest = async(req, res, next)=>
 
         if(response==true)
         {
-            // TODO: need to put the two in a room, and emit the private chat details
-            
-            // private chat room name
-            const privateChatRoomName = `private:${chat._id}`;
-            // get all sockets of user 1
-            const user1Sockets = await io.in(`user:${chat.user1_id}`).allSockets();
-            // put them in a room
-            user1Sockets.forEach((s)=>s.join(privateChatRoomName));
-            // get all sockets of user 2
-            const user2Sockets = await io.in(`user:${chat.user2_id}`).allSockets();
-            // put them in a room
-            user2Sockets.forEach((s)=>s.join(privateChatRoomName));
-
-            // emit private chat details to the room
-            io.to(privateChatRoomName).emit('new private chat', chat);
+            // need to emit the private chat details to both of them
+            io.to(`user:${request.sender_id}`).emit('new private chat', chat);
+            io.to(`user:${request.receiver_id}`).emit('new private chat', chat);
 
         }
 
