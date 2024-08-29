@@ -196,38 +196,16 @@ const login = async(req, res, next)=>
 
 
 // method to get suggested users for the current user
-// TODO: jwt integration
 const getSuggestedUsers = async(req, res, next)=>
 {
     try
     {
-        const errors = validationResult(req);
-        if(!errors.isEmpty)
-        {
-            // invalid data passed
-            throw new HttpError("Invalid inputs, please try again.", 422);
-        }
 
-        const {id} = req.body;
+        const id = req.user._id;
+        const validUserId = new mongoose.Types.ObjectId(String(id));
 
-        // need to fetch the user based on id
-        let currentUser;
-        try
-        {
-            currentUser = await User.findOne({_id: id});
-        }
-        catch(err)
-        {
-            // error while fetching
-            console.log(err);
-            throw new HttpError("Cannot fetch necessary data. Pleasy try again later.", 500);
-        }
-
-        if(!currentUser)
-        {
-            // user not found
-            throw new HttpError("User not found.", 404);
-        }
+        // get the user
+        const currentUser = req.user;
         
         // get the interests of the user
         const interestsOfUser = currentUser.interests;
@@ -245,7 +223,7 @@ const getSuggestedUsers = async(req, res, next)=>
                     $match:
                     {
                         // check id not same as the current user
-                        _id: {$ne: currentUser._id},
+                        _id: {$ne: validUserId},
                         // get users with at least one matching interest
                         interests: {$in: interestsOfUser}
                     }

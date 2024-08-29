@@ -3,6 +3,7 @@ const express = require("express");
 const {check} = require("express-validator");
 
 const userController = require("../controllers/user-controller");
+const { secureRoute } = require("../config/jwt-config");
 
 const router = express.Router();
 
@@ -43,15 +44,10 @@ router.post(
 );
 
 // endpoint for retrieving suggested users for the current user
-// TODO: jwt integration 
 router.get(
     "/suggestions",
-    [
-        // for now, user's id must be present
-        check("id")
-        .not()
-        .isEmpty()
-    ],
+    // auth middleware
+    secureRoute,
     userController.getSuggestedUsers
 );
 
