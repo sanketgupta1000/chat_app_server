@@ -235,7 +235,85 @@ const sendMessage = async(req, res, next)=>
     }
 }
 
+const getMessages = async(req,res,next) => {
+    try
+    {
+        const errors = validationResult(req);
+        if(!errors.isEmpty)
+        {
+            // invalid inputs
+            throw new HttpError("Invalid inputs. Please try again.", 422);
+        }
+
+        // get the request body
+        const {user_id, group_id, limit, offset} = req.body;
+        
+        const validUserId = new mongoose.Types.ObjectId(String(user_id));
+        const validGroupId = new mongoose.Types.ObjectId(String(group_id));
+
+        let group = await Group.findById(validGroupId);
+
+        if(!group)
+        {
+            throw new HttpError("Group not found", 404);
+        }
+
+        let messages = [];
+
+        try
+        {
+            messages = await Group_Chat.aggregate(
+                [
+                    {
+                        // getting the messages
+                        $match: {
+                            'members._id': validUserId,                   
+                            group_id: validGroupId
+                        }
+                    },
+                    {
+                        // sorting in descending order
+                        $sort: {
+                            sent_date_time: -1
+                        }
+                    },
+                    {
+                        $skip: offset
+                    },
+                    {
+                        $limit: limit
+                    },
+                    {
+                        $project: {
+                            _id: false,
+                            id: "$_id",
+                            group_id: "$group_id",
+                            sender_id: "$sender_id",
+                            sent_date_time: "$sent_date_time",
+                            message: "$message"
+                        }
+                    }
+                ]
+            )
+        }
+        catch(e)
+        {
+            console.log(e);
+            throw new HttpError("Failed to fetch messages. Please try again later.", 500);
+        }
+        
+        // send messages to response
+        return res.status(200).json( { messages } );
+    }
+    catch(e)
+    {
+        console.log(e);
+        return next(e);
+    }
+}
+
 module.exports = {
     createGroup,
-    sendMessage
+    sendMessage,
+    getMessages
 };
