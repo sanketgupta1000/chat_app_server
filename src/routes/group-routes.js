@@ -46,4 +46,21 @@ router.post(
     groupController.sendMessage
 );
 
+// endpoint to get message of a group
+router.get(
+    "/",
+    [
+        check("group_id")
+            .not()
+            .isEmpty(),
+        check("user_id")
+            .not()
+            .isEmpty(),
+        check("offset")
+            .isInt({min: 0}),
+        check("limit")
+            .isInt({min:1})
+    ],
+    groupController.getMessages
+)
 module.exports = router;
