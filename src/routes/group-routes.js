@@ -53,9 +53,7 @@ router.get(
         check("group_id")
             .not()
             .isEmpty(),
-        check("user_id")
-            .not()
-            .isEmpty(),
+        // user id can be taken from req.user
         check("offset")
             .isInt({min: 0}),
         check("limit")

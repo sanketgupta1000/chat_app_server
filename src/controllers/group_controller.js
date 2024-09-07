@@ -247,12 +247,25 @@ const getMessages = async(req,res,next) => {
         }
 
         // get the request body
-        const {user_id, group_id, limit, offset} = req.body;
-        
+        const {group_id, limit, offset} = req.body;
+        const user_id = req.user._id;
+
         const validUserId = new mongoose.Types.ObjectId(String(user_id));
         const validGroupId = new mongoose.Types.ObjectId(String(group_id));
 
-        let group = await Group.findById(validGroupId);
+        let group;
+        try
+        {
+            group = await Group.find({
+                _id: validGroupId,
+                'members._id': validUserId
+            });
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw new HttpError("Failed to fetch necessary data, please try later.", 500);
+        }
 
         if(!group)
         {
@@ -267,8 +280,7 @@ const getMessages = async(req,res,next) => {
                 [
                     {
                         // getting the messages
-                        $match: {
-                            'members._id': validUserId,                   
+                        $match: {                  
                             group_id: validGroupId
                         }
                     },
@@ -290,6 +302,7 @@ const getMessages = async(req,res,next) => {
                             id: "$_id",
                             group_id: "$group_id",
                             sender_id: "$sender_id",
+                            sender_name: "$sender_name",
                             sent_date_time: "$sent_date_time",
                             message: "$message"
                         }
