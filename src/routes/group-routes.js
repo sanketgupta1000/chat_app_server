@@ -30,6 +30,12 @@ router.post(
     groupController.createGroup
 );
 
+// endpoint to get all groups of a user
+router.get(
+    "/my-groups",
+    groupController.getGroups
+);
+
 // endpoint to send message in group
 router.post(
     "/send-message",

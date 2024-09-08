@@ -9,6 +9,12 @@ const router = express.Router();
 // auth middleware to all routes of this router
 router.use(secureRoute);
 
+// endpoint to get all private chats of a user
+router.get(
+    "/my-chats",
+    privateChatController.getPrivateChats
+);
+
 // endpoint to send message
 router.post(
     "/send",

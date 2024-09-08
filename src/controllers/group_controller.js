@@ -135,6 +135,48 @@ const createGroup = async(req, res, next)=>
     }
 }
 
+// method to get all groups of a user
+const getGroups = async(req, res, next)=>
+{
+    try
+    {
+        const user_id = req.user._id;
+
+        const validUserId = new mongoose.Types.ObjectId(String(user_id));
+
+        let groups = [];
+
+        try
+        {
+            groups = await Group.find(
+                {
+                    'members._id': validUserId
+                }
+            );
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw new HttpError("Failed to fetch necessary data. Please try again later.", 500);
+        }
+
+        res.status(200).json(
+            {
+                groups: groups.map((group)=>
+                {
+                    return group.toObject({getters: true});
+                })
+            }
+        );
+
+    }
+    catch(e)
+    {
+        console.log(e);
+        return next(e);
+    }
+}
+
 // method to send message in a group
 const sendMessage = async(req, res, next)=>
 {
@@ -328,6 +370,7 @@ const getMessages = async(req,res,next) => {
 
 module.exports = {
     createGroup,
+    getGroups,
     sendMessage,
     getMessages
 };
