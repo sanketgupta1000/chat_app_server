@@ -7,6 +7,44 @@ const {PrivateChatMsg} = require("../models/PrivateChatMsg");
 const { io } = require("../../app");
 
 
+// method to get all private chats of a user
+const getPrivateChats = async(req, res, next) =>
+{
+    try
+    {
+        const user_id = req.user._id;
+
+        const validUserId = new mongoose.Types.ObjectId(String(user_id));
+
+        let privateChats;
+        try
+        {
+            privateChats = await PrivateChat.find(
+                {
+                    $or: [{user1_id: validUserId}, {user2_id: validUserId}]
+                }
+            );
+        }
+        catch(e)
+        {
+            throw new HttpError("Failed to fetch private chats. Please try again later.", 500);
+        }
+
+        // send response
+        return res.status(200)
+        .json(
+            {
+                privateChats: privateChats.map(privateChat=>privateChat.toObject({getters: true}))
+            }
+        );
+    }
+    catch(e)
+    {
+        console.log(e);
+        return next(e);
+    }
+}
+
 // method to send message
 const sendMessage = async(req,res,next) =>
 {
@@ -190,6 +228,7 @@ console.log(user_id)
 }
 
 module.exports = {
+    getPrivateChats,
     sendMessage,
     getMessages
 }
