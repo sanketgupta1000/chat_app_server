@@ -51,4 +51,12 @@ router.get(
     userController.getSuggestedUsers
 );
 
+// endpoint to get the current user, if any
+router.get(
+    "/self",
+    // auth middleware
+    secureRoute,
+    userController.getCurrentUser
+)
+
 module.exports = router;

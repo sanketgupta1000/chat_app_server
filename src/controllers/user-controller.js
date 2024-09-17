@@ -273,8 +273,28 @@ const getSuggestedUsers = async(req, res, next)=>
     }
 }
 
+const getCurrentUser = async(req, res, next)=>
+{
+    try
+    {
+
+        // send user itself
+        res.status(200)
+        .json({
+            currentUser: req.user.toObject({getters: true})
+        });
+
+    }
+    catch(e)
+    {
+        console.log(e);
+        return next(e);
+    }
+}
+
 module.exports = {
     signup,
     login,
-    getSuggestedUsers
+    getSuggestedUsers,
+    getCurrentUser
 }
