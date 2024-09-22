@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const http = require("http");
+const cors = require('cors');
 
 // jwt related things
 const {secureRoute, jwtDecodeOptions} = require("./src/config/jwt-config");
@@ -84,6 +85,9 @@ io.on("connection", (socket)=>
     // put the user in his room
     socket.join(`user:${user._id}`);
 });
+
+// cors config
+app.use(cors());
 
 // middleware to convert body of all requests to json if exist
 app.use(express.json());
