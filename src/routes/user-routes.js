@@ -59,4 +59,12 @@ router.get(
     userController.getCurrentUser
 )
 
+// endpoint to get the user by id
+router.get(
+    "/:user_id",
+    // auth middleware
+    secureRoute,
+    userController.getUserById
+);
+
 module.exports = router;
