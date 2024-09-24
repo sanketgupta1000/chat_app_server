@@ -292,9 +292,48 @@ const getCurrentUser = async(req, res, next)=>
     }
 }
 
+// method to get the user by id
+const getUserById = async(req, res, next)=>
+{
+    try
+    {
+
+        // get the id
+        const user_id = req.params.user_id;
+
+        // get the user from db
+        let user;
+        try
+        {
+            user = await User.findById(user_id);
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw new HttpError("Failed to fetch user. Please try again later.", 500);
+        }
+
+        if(!user)
+        {
+            // user not found
+            throw new HttpError("User not found.", 404);
+        }
+
+        // send user
+        res.status(200).json({user: user.toObject({getters: true})});
+
+    }
+    catch(e)
+    {
+        console.log(e);
+        return next(e);
+    }
+}
+
 module.exports = {
     signup,
     login,
     getSuggestedUsers,
-    getCurrentUser
+    getCurrentUser,
+    getUserById
 }
