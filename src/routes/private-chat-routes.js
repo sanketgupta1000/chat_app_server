@@ -33,13 +33,10 @@ router.post(
 
 // endpoint to get messages for a private chat
 router.get(
-    "/",
+    "/:privateChatId",
     [
         // user id can be taken from req.user
-        check("private_chat_id")
-            .not()
-            .isEmpty(),
-        // offset and limit
+        // offset and limit must be present in query string
         check("offset")
             .isInt({min: 0}),
         check("limit")

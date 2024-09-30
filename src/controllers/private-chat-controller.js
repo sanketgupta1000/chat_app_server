@@ -131,8 +131,8 @@ const sendMessage = async(req,res,next) =>
         }
 
         // emit the new message to both of them
-        io.to(`user:${sender_id}`).emit("new private chat message", privateChatMsg);
-        io.to(`user:${receiver_id}`).emit("new private chat message", privateChatMsg);
+        // io.to(`user:${sender_id}`).emit("new private chat message", privateChatMsg);
+        io.to(`user:${receiver_id}`).emit("new private chat message", privateChatMsg.toObject({getters: true}));
 
         res.status(201).json({message: privateChatMsg.toObject({getters: true})});
     }
@@ -158,7 +158,10 @@ const getMessages = async(req, res, next)=>
         }
 
         // fetch data
-        const { private_chat_id, limit, offset} = req.body;
+        // get private chat id from params
+        const private_chat_id = req.params.privateChatId;
+        // limit and offset from query str
+        const {limit, offset} = req.query;
 
         const user_id = req.user._id;
 
@@ -184,10 +187,10 @@ console.log(user_id)
                     },
                     // offsetting and limiting
                     {
-                        $skip: offset
+                        $skip: Number(offset)
                     },
                     {
-                        $limit: limit
+                        $limit: Number(limit)
                     },
                     {
                         $project: {

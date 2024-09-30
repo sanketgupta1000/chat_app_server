@@ -21,7 +21,11 @@ const app = express();
 const httpServer = http.createServer(app);
 
 // socket io object
-const io = ws(httpServer)
+const io = ws(httpServer, {
+    cors: {
+        origin: "*"
+    }
+});
 
 module.exports.io = io;
 
