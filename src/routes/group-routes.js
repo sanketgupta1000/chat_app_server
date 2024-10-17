@@ -54,7 +54,7 @@ router.post(
 
 // endpoint to get message of a group
 router.get(
-    "/",
+    "/:group_id",
     [
         check("group_id")
             .not()
