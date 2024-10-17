@@ -260,9 +260,10 @@ const sendMessage = async(req, res, next)=>
         }
 
         // emit the new group chat to all members of group
-        for(let member in group.members)
+        for(let member of group.members)
         {
-            io.to(`user:${member._id}`).emit("new group message", newGroupChat);
+            if(!member._id.equals(validSenderId))
+                io.to(`user:${member._id}`).emit("new group message", newGroupChat);
         }
 
         res.status(201)
@@ -289,7 +290,9 @@ const getMessages = async(req,res,next) => {
         }
 
         // get the request body
-        const {group_id, limit, offset} = req.body;
+        // const {group_id, limit, offset} = req.body;
+        const group_id = req.params.group_id;
+        const {limit, offset} = req.query;
         const user_id = req.user._id;
 
         const validUserId = new mongoose.Types.ObjectId(String(user_id));
@@ -318,6 +321,7 @@ const getMessages = async(req,res,next) => {
 
         try
         {
+            console.log("1");
             messages = await Group_Chat.aggregate(
                 [
                     {
@@ -333,10 +337,10 @@ const getMessages = async(req,res,next) => {
                         }
                     },
                     {
-                        $skip: offset
+                        $skip: Number(offset)
                     },
                     {
-                        $limit: limit
+                        $limit: Number(limit)
                     },
                     {
                         $project: {
@@ -351,6 +355,7 @@ const getMessages = async(req,res,next) => {
                     }
                 ]
             )
+            console.log(messages);
         }
         catch(e)
         {
