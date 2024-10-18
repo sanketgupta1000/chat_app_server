@@ -1,10 +1,15 @@
-import mongoose  from "mongoose";
-const {userSchema} = require('./User');
-const {Schema} = mongoose;
+const {Schema, default: mongoose} = require("mongoose");
+
 
 const RatingSchema = new Schema({
-    rater: userSchema,
-    rated: userSchema,
+    rater: {
+        type: mongoose.ObjectId,
+        ref: 'User'
+    },
+    rated: {
+        type: mongoose.ObjectId,
+        ref: 'User'
+    },
     rating: Number
 });
 

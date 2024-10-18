@@ -1,4 +1,6 @@
 const {User} = require("../models/User");
+const {Rating} = require("../models/Rating");
+const {FriendshipRequest} = require("../models/FriendshipRequest");
 const HttpError = require("../models/HttpError");
 const { validationResult } = require("express-validator");
 const { default: mongoose } = require("mongoose");
@@ -343,10 +345,126 @@ const getUserById = async(req, res, next)=>
     }
 }
 
+const rateUser = async(req,res,next) => 
+{
+    try
+    {
+        let {rating} = req.body;
+        const rated_id = new mongoose.Types.ObjectId(String(req.params.user_id));
+        const currentUserId = new mongoose.Types.ObjectId(String(req.user._id));
+
+        rating = Number(rating);
+
+        // rating should be between 1 to 5
+        if (rating < 1 || rating > 5) {
+            throw new HttpError("Invalid rating. Please provide a rating between 1 and 5.", 422);
+        }
+
+        let ratedUser;
+        try
+        {
+            ratedUser = await User.findById(rated_id);
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw new HttpError("Failed to fetch user. Please try again later.", 500);
+        }
+
+        if(!ratedUser)
+        {
+            throw new HttpError("User not found.", 404);
+        }
+
+        // Rate only if there is an accepted friendship between the current user and the rated user
+        let friendship;
+        try
+        {
+            friendship = await FriendshipRequest.findOne(
+                {
+                    $or: [
+                        { sender_id: currentUserId, receiver_id: rated_id, status: "accepted" },
+                        { sender_id: rated_id, receiver_id: currentUserId, status: "accepted" },
+                    ],
+                }
+            );
+        }
+        catch (err) 
+        {
+            console.log(err);
+            throw new HttpError("Failed to verify friendship status.", 500);
+        }
+
+        if (!friendship) 
+        {
+            throw new HttpError("You can only rate users you are friends with.", 403);
+        }
+
+        let existingRating;
+        try 
+        {
+            existingRating = await Rating.findOne(
+            {
+                rater: currentUserId,
+                rated: rated_id,
+            });
+        } 
+        catch (err)
+        {
+            console.log(err);
+            throw new HttpError("Failed to check existing rating.", 500);
+        }
+
+        if (existingRating) 
+        {
+            existingRating.rating = rating;
+            await existingRating.save();
+        } 
+        else 
+        {
+            const newRating = new Rating({
+                rater: currentUserId,
+                rated: rated_id,
+                rating: rating,
+            });
+            await newRating.save();
+        }
+        
+        const totalRatings = await Rating.aggregate(
+            [
+                { $match: { rated: ratedUser._id } },
+                { $group: { _id: "$rated", avgRating: { $avg: "$rating" }, noOfRaters: { $sum: 1 } } },
+            ]
+        );
+
+
+        if (totalRatings.length > 0)
+        {
+            if(ratedUser._id.equals(friendship.sender_id))
+            {
+                friendship.sender_avg_rating = totalRatings[0].avgRating;
+                await friendship.save();
+            }
+            ratedUser.avg_rating = totalRatings[0].avgRating;
+            ratedUser.no_of_raters = totalRatings[0].noOfRaters;
+            await ratedUser.save();
+        }
+      
+        res.status(200).json({ rated_user: ratedUser.toObject({ getters: true }) });
+
+    }
+    catch(e)
+    {
+        console.log(e);
+        return next(e);
+    }
+}
+
 module.exports = {
     signup,
     login,
     getSuggestedUsers,
     getCurrentUser,
-    getUserById
+    getUserById,
+    rateUser
 }

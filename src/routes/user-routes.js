@@ -67,4 +67,10 @@ router.get(
     userController.getUserById
 );
 
+router.post(
+    "/rate/:user_id",
+    secureRoute,
+    userController.rateUser
+);
+
 module.exports = router;
