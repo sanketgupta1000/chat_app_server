@@ -256,8 +256,8 @@ const respondToFriendshipRequest = async(req, res, next)=>
         if(response==true)
         {
             // need to emit the private chat details to both of them
-            io.to(`user:${request.sender_id}`).emit('new private chat', chat);
-            io.to(`user:${request.receiver_id}`).emit('new private chat', chat);
+            io.to(`user:${request.sender_id}`).emit('new private chat', chat.toObject({getters: true}));
+            io.to(`user:${request.receiver_id}`).emit('new private chat', chat.toObject({getters: true}));
 
         }
 

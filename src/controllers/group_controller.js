@@ -117,7 +117,11 @@ const createGroup = async(req, res, next)=>
         
         for(let member of groupMembers)
         {
-            io.to(`user:${member._id}`).emit("new group", newGroup);
+            if(!(member._id.equals(validAdminId)))
+            {
+                // send to all except admin/creator
+                io.to(`user:${member._id}`).emit("new group", newGroup.toObject({getters: true}));
+            }
         }
 
         // send response
@@ -263,7 +267,7 @@ const sendMessage = async(req, res, next)=>
         for(let member of group.members)
         {
             if(!member._id.equals(validSenderId))
-                io.to(`user:${member._id}`).emit("new group message", newGroupChat);
+                io.to(`user:${member._id}`).emit("new group message", newGroupChat.toObject({getters: true}));
         }
 
         res.status(201)
