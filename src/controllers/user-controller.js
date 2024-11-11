@@ -252,9 +252,29 @@ const getSuggestedUsers = async(req, res, next) => {
                     }
                 },
                 {
-                    // filter out users who already have a friendship or a pending friendship request
                     $match: {
-                        "friendshipRequest.status": { $exists: false } // ensure no friendship exists
+
+                        $or: [
+
+                            // // sender is the other person, and current user has rejected the request
+                            // { "friendshipRequest.sender_id": "$_id", "friendshipRequest.status": "rejected" },
+
+                            // // or no request has been sent
+                            // {"friendshipRequest.status": { $exists: false }}
+                            
+                            // Condition 1: No request has ever been sent from A to B and B to A
+                            { "friendshipRequest": { $size: 0 } },
+                            // Condition 2: B had sent a request to A in the past and A had rejected it
+                            {
+                                $expr: {
+                                    $and: [
+                                        { $eq: [{ $size: "$friendshipRequest" }, 1] },
+                                        { $eq: [{ $arrayElemAt: ["$friendshipRequest.sender_id", 0] }, "$_id"] },
+                                        { $eq: [{ $arrayElemAt: ["$friendshipRequest.status", 0] }, "rejected"] }
+                                    ]
+                                }
+                            }
+                        ]
                     }
                 },
                 {
@@ -316,11 +336,14 @@ const getUserById = async(req, res, next)=>
         // get the id
         const user_id = req.params.user_id;
 
+        const validUserId = new mongoose.Types.ObjectId(String(user_id));
+        const validCurrentUserId = new mongoose.Types.ObjectId(String(req.user._id));
+        
         // get the user from db
         let user;
         try
         {
-            user = await User.findById(user_id);
+            user = await User.findById(validUserId);
         }
         catch(err)
         {
@@ -334,8 +357,199 @@ const getUserById = async(req, res, next)=>
             throw new HttpError("User not found.", 404);
         }
 
+        // additional info to be sent
+
+        // can the current user send a friend request to this user
+        let canSendFriendRequest = false;
+
+        // has the current user sent a friend request to this user, without response
+        let hasSentFriendRequest = false;
+
+        // can the current user respond to a friend request from this user
+        let canRespondToFriendRequest = false;
+
+        // requestId in case the user has sent a friend request to the current user
+        let requestId = null;
+
+        // has the current user responded to a friend request from this user
+        let hasRespondedToFriendRequest = false;
+
+        // response of the current user to the friend request
+        let responseToFriendRequest = null;
+
+        // are the users friends
+        let areFriends = false;
+
+        // get the friendship requests
+        let existingRequests;
+
+        if(!validUserId.equals(validCurrentUserId))
+        {
+            // not the same user
+            try
+            {
+                existingRequests = await FriendshipRequest.find(
+                    {
+                        $or: [
+                            { sender_id: validCurrentUserId, receiver_id: validUserId },
+                            { sender_id: validUserId, receiver_id: validCurrentUserId }
+                        ]
+                    }
+                );
+            }
+            catch(err)
+            {
+                console.log(err);
+                throw new HttpError("Failed to fetch necessary data. Please try again later.", 500);
+            }
+    
+            if(existingRequests.length==0)
+            {
+                // no requests
+                canSendFriendRequest = true;
+            }
+            else if(existingRequests.length==1)
+            {
+                // only one request
+                if(existingRequests[0].sender_id.equals(validUserId))
+                {
+                    // sent by the user to the current user
+    
+                    if(existingRequests[0].status=="unresponded")
+                    {
+                        // unresponded
+                        canRespondToFriendRequest = true;
+                        requestId = existingRequests[0]._id;
+                    }
+                    else if(existingRequests[0].status=="accepted")
+                    {
+                        // accepted
+                        hasRespondedToFriendRequest = true;
+                        responseToFriendRequest = "accepted";
+                        areFriends = true;
+                    }
+                    else if(existingRequests[0].status=="rejected")
+                    {
+                        // current user has rejected
+                        canSendFriendRequest = true;
+                        hasRespondedToFriendRequest = true;
+                        responseToFriendRequest = "rejected";
+                    }
+    
+                }
+                else
+                {
+                    // sent by the current user to the user
+                    if(existingRequests[0].status=="unresponded")
+                    {
+                        // unresponded
+                        hasSentFriendRequest = true;
+                    }
+                    else if(existingRequests[0].status=="accepted")
+                    {
+                        // accepted
+                        areFriends = true;
+                    }
+                    else if(existingRequests[0].status=="rejected")
+                    {
+                        // current user has rejected
+                    }
+                }
+            }
+            else
+            {
+                // 2 requests
+    
+                // so one of the two cases:
+                // 1. A had sent a request to B and B had rejected it, B sent another request to A
+                // 2. B had sent a request to A and A had rejected it, A sent another request to B
+    
+                if(existingRequests[0].sender_id.equals(validUserId))
+                {
+                    // request 0 sent by the user to the current user
+    
+                    // request 1 sent by the current user to the user
+                    if(existingRequests[1].status=="unresponded")
+                    {
+                        hasSentFriendRequest = true;
+                    }
+    
+                    if(existingRequests[0].status=="unresponded")
+                    {
+                        // unresponded
+                        canRespondToFriendRequest = true;
+                        requestId = existingRequests[0]._id;
+                    }
+                    else if(existingRequests[0].status=="accepted")
+                    {
+                        // accepted
+                        hasRespondedToFriendRequest = true;
+                        responseToFriendRequest = "accepted";
+                        areFriends = true;
+                    }
+                    else
+                    {
+                        // rejected
+                        hasRespondedToFriendRequest = true;
+                        responseToFriendRequest = "rejected";
+                        if(existingRequests[1].status=="accepted")
+                        {
+                            areFriends = true;
+                        }
+                    }
+                }
+                else
+                {
+                    // request 1 sent by the user to the current user
+    
+                    // request 0 sent by the current user to the user
+                    if(existingRequests[0].status=="unresponded")
+                    {
+                        hasSentFriendRequest = true;
+                    }
+    
+                    if(existingRequests[1].status=="unresponded")
+                    {
+                        // unresponded
+                        canRespondToFriendRequest = true;
+                        requestId = existingRequests[1]._id;
+                    }
+                    else if(existingRequests[1].status=="accepted")
+                    {
+                        // accepted
+                        hasRespondedToFriendRequest = true;
+                        responseToFriendRequest = "accepted";
+                        areFriends = true;
+                    }
+                    else
+                    {
+                        // rejected
+                        hasRespondedToFriendRequest = true;
+                        responseToFriendRequest = "rejected";
+                        if(existingRequests[0].status=="accepted")
+                        {
+                            areFriends = true;
+                        }
+                    }
+                }
+            }
+        }
+
         // send user
-        res.status(200).json({user: user.toObject({getters: true})});
+        res.status(200).json(
+            {
+                user: {
+                    ...(user.toObject({getters: true})),
+                    canSendFriendRequest,
+                    hasSentFriendRequest,
+                    canRespondToFriendRequest,
+                    requestId,
+                    hasRespondedToFriendRequest,
+                    responseToFriendRequest,
+                    areFriends
+                }
+            }
+        );
 
     }
     catch(e)
