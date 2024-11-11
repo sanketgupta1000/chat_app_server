@@ -21,8 +21,12 @@ const sendFriendshipRequest = async(req, res, next)=>
         // get the data from request body
         const { receiver_id} = req.body;
 
+        const validReceiverId = new mongoose.Types.ObjectId(String(receiver_id));
+
         // get sender id from req.user
         const sender_id = req.user._id;
+
+        const validSenderId = new mongoose.Types.ObjectId(String(sender_id));
 
         // get the sender
         const sender = req.user;
@@ -31,7 +35,7 @@ const sendFriendshipRequest = async(req, res, next)=>
         let receiver;
         try
         {
-            receiver = await User.findById(receiver_id);
+            receiver = await User.findById(validReceiverId);
         }
         catch(err)
         {
@@ -47,10 +51,22 @@ const sendFriendshipRequest = async(req, res, next)=>
         }
 
         // check if a friendship request already exists between the two
-        let existingRequest;
+
+        // A can send request to B in only 2 cases:
+        // 1. No request has ever been sent from A to B and B to A
+        // 2. B had sent a request to A in the past and A had rejected it
+
+        let existingRequests = [];
         try
         {
-            existingRequest = await FriendshipRequest.findOne({sender_id: sender_id, receiver_id: receiver_id});
+            existingRequests = await FriendshipRequest.find(
+                {
+                    $or: [  
+                            {sender_id: validSenderId, receiver_id: validReceiverId}, 
+                            {sender_id: validReceiverId, receiver_id: validSenderId}
+                        ],
+                }
+            );
         }
         catch(err)
         {
@@ -59,55 +75,79 @@ const sendFriendshipRequest = async(req, res, next)=>
             throw new HttpError("Could not fetch necessary data. Please try again later.", 500);
         }
 
-        if(existingRequest)
+        if(
+            
+            (
+            // only one request
+            (existingRequests.length==1)
+
+            &&
+            // sent by B
+            (existingRequests[0].sender_id.equals(validReceiverId))
+
+            &&
+            // and rejected by A
+            (existingRequests[0].status=="rejected")
+            )
+
+            ||
+
+            (
+            // no request
+            (existingRequests.length==0)
+            )
+        )
         {
-            // request already exists
-            throw new HttpError("Request already exists.", 409);
-        }
 
-        // now can create and save a new request
-
-        // first, get matching interests
-        let matchingInterests = sender.interests.filter(
-            (i1)=>
-                receiver.interests.some(
-                    (i2)=>
-                        (i1._id.equals(i2._id))
-                )
+            // now can create and save a new request
+    
+            // first, get matching interests
+            let matchingInterests = sender.interests.filter(
+                (i1)=>
+                    receiver.interests.some(
+                        (i2)=>
+                            (i1._id.equals(i2._id))
+                    )
+                );
+    
+            const newRequest = new FriendshipRequest(
+                {
+                    sender_id,
+                    sender_name: sender.name,
+                    sender_email: sender.email,
+                    receiver_id,
+                    receiver_name: receiver.name,
+                    receiver_email: receiver.email,
+                    status: "unresponded",
+                    matching_interests: matchingInterests,
+                    sender_avg_rating: sender.avg_rating
+                }
             );
-
-        const newRequest = new FriendshipRequest(
+    
+            // save it
+            try
             {
-                sender_id,
-                sender_name: sender.name,
-                sender_email: sender.email,
-                receiver_id,
-                receiver_name: receiver.name,
-                receiver_email: receiver.email,
-                status: "unresponded",
-                matching_interests: matchingInterests,
-                sender_avg_rating: sender.avg_rating
+                await newRequest.save();
             }
-        );
-
-        // save it
-        try
-        {
-            await newRequest.save();
+            catch(err)
+            {
+                console.log(err);
+                throw new HttpError("Failed to send a friendship request. Please try again.", 500);
+            }
+    
+            // emitting socket event on receiver
+            io.to(`user:${receiver_id}`).emit("new friendship request", {
+                request: newRequest.toObject({getters: true})
+            });
+    
+            // send response
+            res.status(201).json({request: newRequest.toObject({getters: true})});
         }
-        catch(err)
+        else
         {
-            console.log(err);
-            throw new HttpError("Failed to send a friendship request. Please try again.", 500);
+            // friendship request already exists
+            throw new HttpError("Friendship request already exists.", 409);
         }
-
-        // emitting socket event on receiver
-        io.to(`user:${receiver_id}`).emit("new friendship request", {
-            request: newRequest.toObject({getters: true})
-        });
-
-        // send response
-        res.status(201).json({request: newRequest.toObject({getters: true})});
 
     }
     catch(e)
