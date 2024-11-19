@@ -559,6 +559,48 @@ const getUserById = async(req, res, next)=>
     }
 }
 
+// method to search for users by searchKey, searchKey can be name or email
+const getUsersBySearchKey = async(req, res, next) =>
+{
+    try
+    {
+        const errors = validationResult(req);
+        if(!errors.isEmpty())
+        {
+            throw new HttpError("Invalid inputs. Please try again.", 422);
+        }
+
+        const {searchKey, offset, limit} = req.query;
+
+        let users=null;
+        try
+        {
+            users = await User.find({
+                $or: [
+                    {name: {$regex: searchKey, $options: "i"}},
+                    {email: {$regex: searchKey, $options: "i"}}
+                ]
+            })
+            .skip(Number(offset))
+            .limit(Number(limit));
+        }
+        catch(err)
+        {
+            console.log(err);
+            throw new HttpError("Failed to fetch users. Please try again later.", 500);
+        }
+
+        // found users
+        res.status(200).json({users: users.map(user=>user.toObject({getters: true}) )});
+
+    }
+    catch(e)
+    {
+        console.log(e);
+        return next(e);
+    }
+}
+
 const rateUser = async(req,res,next) => 
 {
     try
@@ -680,5 +722,6 @@ module.exports = {
     getSuggestedUsers,
     getCurrentUser,
     getUserById,
+    getUsersBySearchKey,
     rateUser
 }

@@ -67,6 +67,25 @@ router.get(
     userController.getUserById
 );
 
+// endpoint to get the users by searchKey
+router.get(
+    "",
+    [
+        // auth middleware
+        secureRoute,
+        // email or name to search
+        check("searchKey")
+            .not()
+            .isEmpty(),
+        // limit and offset for pagination
+        check("offset")
+            .isInt({min: 0}),
+        check("limit")
+            .isInt({min: 1})
+    ],
+    userController.getUsersBySearchKey
+);
+
 router.post(
     "/rate/:user_id",
     secureRoute,
