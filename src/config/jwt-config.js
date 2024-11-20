@@ -9,7 +9,7 @@ const ExtractJwt = passportJwt.ExtractJwt;
 const jwt = require("jsonwebtoken");
 
 // jwt secret, will use for encoding and decoding jwt, keep it in a safe location
-const jwtSecret = "Mys3cr3t";
+const jwtSecret = process.env.JWT_SECRET;
 
 const {User} = require("../models/User");
 const HttpError = require("../models/HttpError");

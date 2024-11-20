@@ -1,3 +1,7 @@
+
+// env vars
+require('dotenv').config()
+
 const express = require("express");
 const mongoose = require("mongoose");
 const http = require("http");
@@ -6,9 +10,6 @@ const cors = require('cors');
 // jwt related things
 const {secureRoute, jwtDecodeOptions} = require("./src/config/jwt-config");
 const jwt = require("jsonwebtoken");
-
-// env vars
-require('dotenv').config()
 
 // web socket
 const ws = require("socket.io");
