@@ -91,8 +91,16 @@ io.on("connection", (socket)=>
     socket.join(`user:${user._id}`);
 });
 
+// default environment is production
+// could have included both the urls in a single array
+// but this could lead to security issues
+// say someone else is running their frontend on their localhost, then they could access the server
 const corsOptions = {
-    origin: ["http://localhost:5173", "https://chat-app-s3.netlify.app"],
+    origin: process.env.NODE_ENV === "development"
+            ?
+            ["http://localhost:5173"]
+            :
+            ["https://chat-app-s3.netlify.app"],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"]
 };
