@@ -91,8 +91,14 @@ io.on("connection", (socket)=>
     socket.join(`user:${user._id}`);
 });
 
+const corsOptions = {
+    origin: ["http://localhost:5173", "https://chat-app-s3.netlify.app"],
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+};
+
 // cors config
-app.use(cors());
+app.use(cors(corsOptions));
 
 // middleware to convert body of all requests to json if exist
 app.use(express.json());
