@@ -96,11 +96,7 @@ io.on("connection", (socket)=>
 // but this could lead to security issues
 // say someone else is running their frontend on their localhost, then they could access the server
 const corsOptions = {
-    origin: process.env.NODE_ENV === "development"
-            ?
-            ["http://localhost:5173"]
-            :
-            ["https://chat-app-s3.netlify.app"],
+    origin: String(process.env.ALLOWED_ORIGINS).split(","),
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     allowedHeaders: ["Content-Type", "Authorization"]
 };
@@ -120,7 +116,7 @@ app.get(
     (req, res)=>
     {
         
-        console.log("executing the controller method")
+        console.log("executing the controller method");
         
         // auth success
         res.send(req.user);
